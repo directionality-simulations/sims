@@ -1,0 +1,336 @@
+sims_df <- read.csv('../sims_output/sims_df.csv')
+
+library(tidyverse)
+library(ggplot2)
+library(data.table)
+
+sims_df$case <- as.character(sims_df$case)
+
+# Calculate bias in b1 ----------------------------------------------------
+
+
+sims_df <- sims_df %>%
+  mutate(bias_subtractor = case_when(
+    # True b1 = 0.082
+    case == 'case1' ~ 0.082,
+    # For all other cases, true b1 = 0
+    case == 'case2' ~ 0,
+    case == 'case3_symm' ~ 0,
+    case == 'case3_lagx' ~ 0,
+    case == 'case3_lagy' ~ 0
+  )) %>%
+  mutate(bias_b1 = 
+           b1 - bias_subtractor)
+
+
+# Calculation Proportion Significant --------------------------------------
+
+# alpha = 0.05
+
+# number of times out of 500 that are below 0.05. 
+
+proportion_df <- sims_df %>%
+  group_by(case, model, sample_size, lag_amount) %>%
+  summarise(
+    prop_sig = (sum(p_value < 0.05) / 500)
+  )
+
+sims_df <- left_join(sims_df, proportion_df)
+
+
+# Relabel sample size so graphs look pretty -------------------------------
+
+sims_df$sample_size <- as.character(sims_df$sample_size)
+sims_df <- sims_df %>%
+  mutate(ss_pretty = case_when(
+    sample_size == '72' ~ 'N = 72',
+    sample_size == '150' ~ 'N = 150',
+    sample_size == '250' ~ 'N = 250',
+    sample_size == '350' ~ 'N = 350',
+    sample_size == '450' ~ 'N = 450',
+    sample_size == '550' ~ 'N = 550'
+  ))
+sims_df$ss_pretty <- factor(sims_df$ss_pretty, levels = c('N = 72', 
+                                                          'N = 150',
+                                                          'N = 250',
+                                                          'N = 350',
+                                                          'N = 450',
+                                                          'N = 550'))
+
+# Labels for plots throughout ---------------------------------------------
+
+# y axis
+b1_label <- bquote('Bias in' ~ hat('b'[1]))
+se_label <- bquote('Standard error on' ~ hat('b'[1]))
+prop_significant <- bquote('Proportion of significant' ~ hat('b'[1]))
+
+yt_1_label <- expression('Partials y'[t-1])
+yt_label <- expression('Does not partial y'[t-1])
+
+# Easier to plot as data.table --------------------------------------------
+
+plot_df <- data.table(sims_df)
+
+
+# Case 1 ------------------------------------------------------------------
+
+# bias in b1
+
+ggplot(plot_df[case == 'case1', ], aes(x = lag_amount, y = bias_b1, group = model, linetype = model)) + 
+  geom_line(stat = 'summary', fun.y = 'mean') + 
+  facet_wrap(~ss_pretty) +
+  ylab(b1_label) + 
+  xlab('Time Lag') + 
+  scale_linetype_discrete(name = 'Model Applied',
+                       breaks = c('partial', 'wo'),
+                       labels = c(yt_1_label, yt_label)) + 
+  theme_classic() # note, if you get a "polygon edge not found" error just re-run the ggplot code
+
+
+# se
+
+ggplot(plot_df[case == 'case1', ], aes(x = lag_amount, y = se, group = model, linetype = model)) + 
+  geom_line(stat = 'summary', fun.y = 'mean') + 
+  facet_wrap(~ss_pretty) +
+  ylab(se_label) + 
+  xlab('Time Lag') + 
+  scale_linetype_discrete(name = 'Model Applied',
+                          breaks = c('partial', 'wo'),
+                          labels = c(yt_1_label, yt_label)) + 
+  scale_y_continuous(limits = c(0, 0.03)) + 
+  theme_classic()
+
+# proportion significant
+
+hline_df <- data.frame(
+  'sample_size' = c(72,150,250,350,450,550),
+  'yintercept' = c(rep(0.05, 6))
+)
+
+ggplot(plot_df[case == 'case1', ], aes(x = lag_amount, y = prop_sig, group = model, linetype = model)) + 
+  geom_line(stat = 'summary', fun.y = 'mean') + 
+  geom_hline(data = hline_df, aes(yintercept = yintercept), linetype = 'longdash', size = 1, alpha = 0.2) + 
+  facet_wrap(~ss_pretty) +
+  ylab(prop_significant) + 
+  xlab('Time Lag') + 
+  scale_linetype_discrete(name = 'Model Applied',
+                          breaks = c('partial', 'wo'),
+                          labels = c(yt_1_label, yt_label)) + 
+  theme_classic()
+
+
+# Case 2 ------------------------------------------------------------------
+
+# bias in b1
+
+
+ggplot(plot_df[case == 'case2', ], aes(x = lag_amount, y = bias_b1, group = model, linetype = model)) + 
+  geom_line(stat = 'summary', fun.y = 'mean') + 
+  facet_wrap(~ss_pretty) +
+  ylab(b1_label) + 
+  xlab('Time Lag') + 
+  scale_linetype_discrete(name = 'Model Applied',
+                          breaks = c('partial', 'wo'),
+                          labels = c(yt_1_label, yt_label)) + 
+  theme_classic()
+
+
+# se
+
+ggplot(plot_df[case == 'case2', ], aes(x = lag_amount, y = se, group = model, linetype = model)) + 
+  geom_line(stat = 'summary', fun.y = 'mean') + 
+  facet_wrap(~ss_pretty) +
+  ylab(se_label) + 
+  xlab('Time Lag') + 
+  scale_linetype_discrete(name = 'Model Applied',
+                          breaks = c('partial', 'wo'),
+                          labels = c(yt_1_label, yt_label)) + 
+  scale_y_continuous(limits = c(0, 0.03)) + 
+  theme_classic()
+
+# proportion significant
+
+hline_df <- data.frame(
+  'sample_size' = c(72,150,250,350,450,550),
+  'yintercept' = c(rep(0.05, 6))
+)
+
+ggplot(plot_df[case == 'case2', ], aes(x = lag_amount, y = prop_sig, group = model, linetype = model)) + 
+  geom_line(stat = 'summary', fun.y = 'mean') + 
+  geom_hline(data = hline_df, aes(yintercept = yintercept), linetype = 'longdash', size = 1, alpha = 0.2) + 
+  facet_wrap(~ss_pretty) +
+  ylab(prop_significant) + 
+  xlab('Time Lag') + 
+  scale_linetype_discrete(name = 'Model Applied',
+                          breaks = c('partial', 'wo'),
+                          labels = c(yt_1_label, yt_label)) + 
+  theme_classic()
+
+
+
+
+
+
+# Case 3 ------------------------------------------------------------------
+
+
+# symmetric ---------------------------------------------------------------
+
+
+# bias in b1
+
+
+ggplot(plot_df[case == 'case3_symm', ], aes(x = lag_amount, y = bias_b1, group = model, linetype = model)) + 
+  geom_line(stat = 'summary', fun.y = 'mean') + 
+  facet_wrap(~ss_pretty) +
+  ylab(b1_label) + 
+  xlab('Time Lag') + 
+  scale_linetype_discrete(name = 'Model Applied',
+                          breaks = c('partial', 'wo'),
+                          labels = c(yt_1_label, yt_label)) + 
+  scale_y_continuous(limits = c(0, 0.015)) + 
+  theme_classic()
+
+
+# se
+
+ggplot(plot_df[case == 'case3_symm', ], aes(x = lag_amount, y = se, group = model, linetype = model)) + 
+  geom_line(stat = 'summary', fun.y = 'mean') + 
+  facet_wrap(~ss_pretty) +
+  ylab(se_label) + 
+  xlab('Time Lag') + 
+  scale_linetype_discrete(name = 'Model Applied',
+                          breaks = c('partial', 'wo'),
+                          labels = c(yt_1_label, yt_label)) + 
+  scale_y_continuous(limits = c(0, 0.03)) + 
+  theme_classic()
+
+# proportion significant
+
+hline_df <- data.frame(
+  'sample_size' = c(72,150,250,350,450,550),
+  'yintercept' = c(rep(0.05, 6))
+)
+
+ggplot(plot_df[case == 'case3_symm', ], aes(x = lag_amount, y = prop_sig, group = model, linetype = model)) + 
+  geom_line(stat = 'summary', fun.y = 'mean') + 
+  geom_hline(data = hline_df, aes(yintercept = yintercept), linetype = 'longdash', size = 1, alpha = 0.2) + 
+  facet_wrap(~ss_pretty) +
+  ylab(prop_significant) + 
+  xlab('Time Lag') + 
+  scale_linetype_discrete(name = 'Model Applied',
+                          breaks = c('partial', 'wo'),
+                          labels = c(yt_1_label, yt_label)) + 
+  scale_y_continuous(limits = c(0.04, 0.5),
+                     breaks = c(0.05, 0.15, 0.25, 0.35, 0.45)) + 
+  theme_classic()
+
+
+
+
+# lagx --------------------------------------------------------------------
+
+
+# bias in b1
+
+
+ggplot(plot_df[case == 'case3_lagx', ], aes(x = lag_amount, y = bias_b1, group = model, linetype = model)) + 
+  geom_line(stat = 'summary', fun.y = 'mean') + 
+  facet_wrap(~ss_pretty) +
+  ylab(b1_label) + 
+  xlab('Time Lag') + 
+  scale_linetype_discrete(name = 'Model Applied',
+                          breaks = c('partial', 'wo'),
+                          labels = c(yt_1_label, yt_label)) + 
+  theme_classic()
+
+
+# se
+
+ggplot(plot_df[case == 'case3_lagx', ], aes(x = lag_amount, y = se, group = model, linetype = model)) + 
+  geom_line(stat = 'summary', fun.y = 'mean') + 
+  facet_wrap(~ss_pretty) +
+  ylab(se_label) + 
+  xlab('Time Lag') + 
+  scale_linetype_discrete(name = 'Model Applied',
+                          breaks = c('partial', 'wo'),
+                          labels = c(yt_1_label, yt_label)) + 
+  scale_y_continuous(limits = c(0, 0.03)) + 
+  theme_classic()
+
+# proportion significant
+
+hline_df <- data.frame(
+  'sample_size' = c(72,150,250,350,450,550),
+  'yintercept' = c(rep(0.05, 6))
+)
+
+ggplot(plot_df[case == 'case3_lagx', ], aes(x = lag_amount, y = prop_sig, group = model, linetype = model)) + 
+  geom_line(stat = 'summary', fun.y = 'mean') + 
+  geom_hline(data = hline_df, aes(yintercept = yintercept), linetype = 'longdash', size = 1, alpha = 0.2) + 
+  facet_wrap(~ss_pretty) +
+  ylab(prop_significant) + 
+  xlab('Time Lag') + 
+  scale_linetype_discrete(name = 'Model Applied',
+                          breaks = c('partial', 'wo'),
+                          labels = c(yt_1_label, yt_label)) + 
+  scale_y_continuous(limits = c(0, 0.5),
+                     breaks = c(0.05, 0.15, 0.25, 0.35, 0.45)) + 
+  theme_classic()
+
+
+
+# lagy --------------------------------------------------------------------
+
+
+# bias in b1
+
+
+ggplot(plot_df[case == 'case3_lagy', ], aes(x = lag_amount, y = bias_b1, group = model, linetype = model)) + 
+  geom_line(stat = 'summary', fun.y = 'mean') + 
+  facet_wrap(~ss_pretty) +
+  ylab(b1_label) + 
+  xlab('Time Lag') + 
+  scale_linetype_discrete(name = 'Model Applied',
+                          breaks = c('partial', 'wo'),
+                          labels = c(yt_1_label, yt_label)) + 
+  theme_classic()
+
+
+# se
+
+ggplot(plot_df[case == 'case3_lagy', ], aes(x = lag_amount, y = se, group = model, linetype = model)) + 
+  geom_line(stat = 'summary', fun.y = 'mean') + 
+  facet_wrap(~ss_pretty) +
+  ylab(se_label) + 
+  xlab('Time Lag') + 
+  scale_linetype_discrete(name = 'Model Applied',
+                          breaks = c('partial', 'wo'),
+                          labels = c(yt_1_label, yt_label)) + 
+  scale_y_continuous(limits = c(0, 0.03)) + 
+  theme_classic()
+
+# proportion significant
+
+hline_df <- data.frame(
+  'sample_size' = c(72,150,250,350,450,550),
+  'yintercept' = c(rep(0.05, 6))
+)
+
+ggplot(plot_df[case == 'case3_lagy', ], aes(x = lag_amount, y = prop_sig, group = model, linetype = model)) + 
+  geom_line(stat = 'summary', fun.y = 'mean') + 
+  geom_hline(data = hline_df, aes(yintercept = yintercept), linetype = 'longdash', size = 1, alpha = 0.2) + 
+  facet_wrap(~ss_pretty) +
+  ylab(prop_significant) + 
+  xlab('Time Lag') + 
+  scale_linetype_discrete(name = 'Model Applied',
+                          breaks = c('partial', 'wo'),
+                          labels = c(yt_1_label, yt_label)) + 
+  scale_y_continuous(limits = c(0.0, 0.5),
+                     breaks = c(0.05, 0.15, 0.25, 0.35, 0.45)) +   
+  theme_classic()
+
+
+save.image('../../../Paper/rmarkdown/data_plotting/df_post_plot.RData')
+
+
